@@ -14,15 +14,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kembalikan'])) {
     $id_peminjaman = $_POST['id_peminjaman'];
 
     try {
-        // Update status peminjaman menjadi RETURNED
-        query(
-            "UPDATE peminjaman
-             SET status = 'RETURNED', tanggal_kembali = NOW()
-             WHERE id_peminjaman = ? AND id_anggota = ? AND status = 'ACTIVE'",
+        // Ambil id_eksemplar dari peminjaman
+        $peminjaman = query(
+            "SELECT id_eksemplar FROM peminjaman WHERE id_peminjaman = ? AND id_anggota = ?",
             [$id_peminjaman, $user_id]
-        );
+        )->fetch();
 
-        $message = 'Buku berhasil dikembalikan! Terima kasih.';
+        if ($peminjaman) {
+            // Update status peminjaman menjadi RETURNED
+            query(
+                "UPDATE peminjaman
+                 SET status = 'RETURNED', tanggal_kembali = NOW()
+                 WHERE id_peminjaman = ? AND id_anggota = ? AND status = 'ACTIVE'",
+                [$id_peminjaman, $user_id]
+            );
+
+            // Update status eksemplar kembali ke AVAILABLE
+            query(
+                "UPDATE eksemplar SET status = 'AVAILABLE' WHERE id_eksemplar = ?",
+                [$peminjaman['id_eksemplar']]
+            );
+
+            $message = 'Buku berhasil dikembalikan! Terima kasih.';
+        }
     } catch (Exception $e) {
         $error = 'Gagal mengembalikan buku: ' . $e->getMessage();
     }

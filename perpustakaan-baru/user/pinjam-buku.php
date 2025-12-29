@@ -48,6 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pinjam'])) {
                         [$eksemplar['id_eksemplar'], $user_id, $tanggal_jatuh_tempo]
                     );
 
+                    // Update status eksemplar menjadi LOANED
+                    query(
+                        "UPDATE eksemplar SET status = 'LOANED' WHERE id_eksemplar = ?",
+                        [$eksemplar['id_eksemplar']]
+                    );
+
                     $message = "Buku berhasil dipinjam untuk {$durasi_hari} hari! Harap kembalikan sebelum " . date('d M Y', strtotime($tanggal_jatuh_tempo));
                 } catch (Exception $e) {
                     $error = 'Gagal meminjam buku: ' . $e->getMessage();
