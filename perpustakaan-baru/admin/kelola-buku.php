@@ -43,68 +43,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } else {
             try {
                 if ($action === 'add') {
-                    query(
-                        "INSERT INTO koleksi (judul, subjudul, tahun_terbit, isbn, jenis_koleksi, id_kategori, cover_image) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [$judul, $subjudul, $tahun_terbit, $isbn, $jenis_koleksi, $id_kategori ?: null, $cover_image ?: null]
+                    // Gunakan koneksi yang sama untuk semua operasi
+                    $conn = getConnection();
+
+                    $stmt = $conn->prepare(
+                        "INSERT INTO koleksi (judul, subjudul, tahun_terbit, isbn, jenis_koleksi, id_kategori, cover_image)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)"
                     );
-                    
-                    $id_koleksi = getConnection()->lastInsertId();
-                    
+                    $stmt->execute([$judul, $subjudul, $tahun_terbit, $isbn, $jenis_koleksi, $id_kategori ?: null, $cover_image ?: null]);
+
+                    $id_koleksi = $conn->lastInsertId();
+
                     if (!empty($nama_penulis)) {
                         $penulis = query(
                             "SELECT id_penulis FROM penulis WHERE nama_lengkap = ?",
                             [$nama_penulis]
                         )->fetch();
-                        
+
                         if (!$penulis) {
-                            query("INSERT INTO penulis (nama_lengkap) VALUES (?)", [$nama_penulis]);
-                            $id_penulis = getConnection()->lastInsertId();
+                            $stmt = $conn->prepare("INSERT INTO penulis (nama_lengkap) VALUES (?)");
+                            $stmt->execute([$nama_penulis]);
+                            $id_penulis = $conn->lastInsertId();
                         } else {
                             $id_penulis = $penulis['id_penulis'];
                         }
-                        
-                        query("INSERT INTO koleksi_penulis (id_koleksi, id_penulis) VALUES (?, ?)", [$id_koleksi, $id_penulis]);
+
+                        $stmt = $conn->prepare("INSERT INTO koleksi_penulis (id_koleksi, id_penulis) VALUES (?, ?)");
+                        $stmt->execute([$id_koleksi, $id_penulis]);
                     }
-                    
+
                     $message = 'Buku berhasil ditambahkan';
                 } else {
                     $id_koleksi = $_POST['id_koleksi'];
-                    
+                    $conn = getConnection();
+
                     if ($cover_image) {
                         $old = query("SELECT cover_image FROM koleksi WHERE id_koleksi = ?", [$id_koleksi])->fetch();
                         if ($old && $old['cover_image'] && file_exists('../uploads/covers/' . $old['cover_image'])) {
                             unlink('../uploads/covers/' . $old['cover_image']);
                         }
-                        
+
                         query(
-                            "UPDATE koleksi SET judul = ?, subjudul = ?, tahun_terbit = ?, isbn = ?, jenis_koleksi = ?, id_kategori = ?, cover_image = ? 
+                            "UPDATE koleksi SET judul = ?, subjudul = ?, tahun_terbit = ?, isbn = ?, jenis_koleksi = ?, id_kategori = ?, cover_image = ?
                              WHERE id_koleksi = ?",
                             [$judul, $subjudul, $tahun_terbit, $isbn, $jenis_koleksi, $id_kategori ?: null, $cover_image, $id_koleksi]
                         );
                     } else {
                         query(
-                            "UPDATE koleksi SET judul = ?, subjudul = ?, tahun_terbit = ?, isbn = ?, jenis_koleksi = ?, id_kategori = ? 
+                            "UPDATE koleksi SET judul = ?, subjudul = ?, tahun_terbit = ?, isbn = ?, jenis_koleksi = ?, id_kategori = ?
                              WHERE id_koleksi = ?",
                             [$judul, $subjudul, $tahun_terbit, $isbn, $jenis_koleksi, $id_kategori ?: null, $id_koleksi]
                         );
                     }
-                    
+
                     if (!empty($nama_penulis)) {
                         query("DELETE FROM koleksi_penulis WHERE id_koleksi = ?", [$id_koleksi]);
-                        
+
                         $penulis = query("SELECT id_penulis FROM penulis WHERE nama_lengkap = ?", [$nama_penulis])->fetch();
-                        
+
                         if (!$penulis) {
-                            query("INSERT INTO penulis (nama_lengkap) VALUES (?)", [$nama_penulis]);
-                            $id_penulis = getConnection()->lastInsertId();
+                            $stmt = $conn->prepare("INSERT INTO penulis (nama_lengkap) VALUES (?)");
+                            $stmt->execute([$nama_penulis]);
+                            $id_penulis = $conn->lastInsertId();
                         } else {
                             $id_penulis = $penulis['id_penulis'];
                         }
-                        
-                        query("INSERT INTO koleksi_penulis (id_koleksi, id_penulis) VALUES (?, ?)", [$id_koleksi, $id_penulis]);
+
+                        $stmt = $conn->prepare("INSERT INTO koleksi_penulis (id_koleksi, id_penulis) VALUES (?, ?)");
+                        $stmt->execute([$id_koleksi, $id_penulis]);
                     }
-                    
+
                     $message = 'Buku berhasil diperbarui';
                 }
             } catch (Exception $e) {
