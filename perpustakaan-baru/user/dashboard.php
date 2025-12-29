@@ -42,21 +42,23 @@ $stats = query(
 
 // Peminjaman aktif
 $peminjamanAktif = query(
-    "SELECT 
+    "SELECT
         p.id_peminjaman,
         p.tanggal_pinjam,
         p.tanggal_jatuh_tempo,
         p.status,
         p.jumlah_denda,
         k.judul,
-        pen.nama_lengkap as penulis,
+        (SELECT pen.nama_lengkap
+         FROM koleksi_penulis kp
+         JOIN penulis pen ON kp.id_penulis = pen.id_penulis
+         WHERE kp.id_koleksi = k.id_koleksi
+         LIMIT 1) as penulis,
         e.kode_barcode,
         e.nomor_panggil
      FROM peminjaman p
      JOIN eksemplar e ON p.id_eksemplar = e.id_eksemplar
      JOIN koleksi k ON e.id_koleksi = k.id_koleksi
-     LEFT JOIN koleksi_penulis kp ON k.id_koleksi = kp.id_koleksi
-     LEFT JOIN penulis pen ON kp.id_penulis = pen.id_penulis
      WHERE p.id_anggota = ? AND p.status = 'ACTIVE'
      ORDER BY p.tanggal_jatuh_tempo ASC",
     [$user_id]
@@ -64,19 +66,21 @@ $peminjamanAktif = query(
 
 // Riwayat peminjaman
 $riwayat = query(
-    "SELECT 
+    "SELECT
         p.id_peminjaman,
         p.tanggal_pinjam,
         p.tanggal_kembali,
         p.status,
         p.jumlah_denda,
         k.judul,
-        pen.nama_lengkap as penulis
+        (SELECT pen.nama_lengkap
+         FROM koleksi_penulis kp
+         JOIN penulis pen ON kp.id_penulis = pen.id_penulis
+         WHERE kp.id_koleksi = k.id_koleksi
+         LIMIT 1) as penulis
      FROM peminjaman p
      JOIN eksemplar e ON p.id_eksemplar = e.id_eksemplar
      JOIN koleksi k ON e.id_koleksi = k.id_koleksi
-     LEFT JOIN koleksi_penulis kp ON k.id_koleksi = kp.id_koleksi
-     LEFT JOIN penulis pen ON kp.id_penulis = pen.id_penulis
      WHERE p.id_anggota = ? AND p.status = 'RETURNED'
      ORDER BY p.tanggal_kembali DESC
      LIMIT 10",
